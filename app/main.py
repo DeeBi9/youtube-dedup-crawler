@@ -140,6 +140,7 @@ def crawl_once(crawl_id):
     total_new = 0
     total_dupes = 0
     total_skipped_thumb = 0
+    retries = 0
 
     while True:
         result = search_videos(YT_API_KEY, KEYWORD, page_token=page_token, max_results=50)
@@ -147,12 +148,23 @@ def crawl_once(crawl_id):
         if not result["success"]:
             if result["error"] == "quota_exceeded":
                 print(f"QUOTA | {result['message']} | new_so_far={total_new}")
-            elif result["error"] == "rate_limited":
-                retry = result.get("retry_after")
-                print(f"RATE_LIMIT | retry_after={retry} | new_so_far={total_new}")
+                break
+            elif result["error"] == "rate_limited" and retries == 0:
+                retry = result.get("retry_after") or 60
+                print(f"RATE_LIMIT | retry_after={retry}s | retrying | new_so_far={total_new}")
+                import time
+                time.sleep(retry)
+                retries = 1
+                continue
+            elif result["error"] == "rate_limited" and retries == 1:
+                retry = result.get("retry_after") or 60
+                print(f"RATE_LIMIT | retry_after={retry}s | giving_up | new_so_far={total_new}")
+                break
             else:
                 print(f"ERROR | {result['error']} | {result['message']}")
-            break
+                break
+
+        retries = 0
 
         page_number += 1
         items = result["items"]
