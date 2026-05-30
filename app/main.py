@@ -4,7 +4,7 @@ Task 5 — Keyword Crawler + Dedup
 from collections import deque
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 from .config import load_config
@@ -32,7 +32,29 @@ def health():
 
 @app.get("/queue")
 def get_queue():
-    return {"count": 0, "items": []}
+    try:
+        engine = get_engine()
+        with Session(engine) as session:
+            rows = (
+                session.query(ScanQueue)
+                .order_by(ScanQueue.created_at.desc())
+                .all()
+            )
+        items = [
+            {
+                "video_id": r.video_id,
+                "title": r.title,
+                "url": r.url,
+                "thumbnail": r.thumbnail,
+                "phash": r.phash,
+                "created_at": r.created_at,
+            }
+            for r in rows
+        ]
+        return {"count": len(items), "items": items}
+    except Exception as e:
+        print(f"ERROR | get_queue | {e}")
+        raise HTTPException(status_code=500, detail="Failed to read queue")
 
 
 def _scheduled_crawl():
