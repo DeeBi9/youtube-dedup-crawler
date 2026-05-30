@@ -1,6 +1,9 @@
 """
 Task 5 — Keyword Crawler + Dedup
 """
+from collections import deque
+
+from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from sqlalchemy.orm import Session
 
@@ -18,7 +21,8 @@ INTERVAL_MIN = config["INTERVAL_MIN"]
 PHASH_THRESHOLD = config["PHASH_THRESHOLD"]
 
 phash_cache = PhashCache()
-queue = []
+queue = deque(maxlen=1000)
+scheduler = None
 
 
 @app.get("/health")
@@ -29,6 +33,16 @@ def health():
 @app.get("/queue")
 def get_queue():
     return {"count": 0, "items": []}
+
+
+def _scheduled_crawl():
+    print(f"SCHEDULER | crawl_started | interval={INTERVAL_MIN}min")
+    try:
+        crawl_once()
+    except Exception as e:
+        print(f"SCHEDULER | crawl_failed | error={e}")
+        raise
+    print("SCHEDULER | crawl_completed")
 
 
 def crawl_once():
@@ -99,14 +113,33 @@ def crawl_once():
 
 @app.on_event("startup")
 def on_startup():
+    global scheduler, phash_cache
+
     init_db()
-    global phash_cache
+    print("STARTUP | db_initialized")
+
     loaded = load_all_phashes()
     for h in loaded:
         phash_cache.add(h)
-    print(f"STARTUP | loaded_phashes={len(phash_cache)} | threshold={PHASH_THRESHOLD}")
+    print(f"STARTUP | phash_cache_loaded | count={len(phash_cache)} | threshold={PHASH_THRESHOLD}")
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        _scheduled_crawl,
+        trigger="interval",
+        minutes=INTERVAL_MIN,
+        id="crawl_once",
+        replace_existing=True,
+    )
+    scheduler.start()
+    print(f"SCHEDULER | started | interval={INTERVAL_MIN}min | job_id=crawl_once")
+
+    _scheduled_crawl()
 
 
 @app.on_event("shutdown")
 def on_shutdown():
-    pass
+    global scheduler
+    if scheduler and scheduler.running:
+        scheduler.shutdown(wait=False)
+        print("SCHEDULER | shutdown")
