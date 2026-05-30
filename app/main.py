@@ -2,6 +2,7 @@
 Task 5 — Keyword Crawler + Dedup
 """
 from collections import deque
+from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, HTTPException
@@ -57,6 +58,25 @@ def get_queue():
         raise HTTPException(status_code=500, detail="Failed to read queue")
 
 
+DEDUP_LOG = "dedup.log"
+
+
+def log_duplicate(video_id, title, new_phash, matched_phash, distance):
+    line = (
+        f"[{datetime.now().isoformat()}] "
+        f"DUPLICATE | "
+        f"new_video_id={video_id} | "
+        f"new_title=\"{title}\" | "
+        f"new_phash={new_phash} | "
+        f"matched_phash={matched_phash} | "
+        f"hamming_distance={distance} | "
+        f"threshold={PHASH_THRESHOLD} | "
+        f"skipped=yes\n"
+    )
+    with open(DEDUP_LOG, "a") as f:
+        f.write(line)
+
+
 def _scheduled_crawl():
     print(f"SCHEDULER | crawl_started | interval={INTERVAL_MIN}min")
     try:
@@ -110,6 +130,7 @@ def crawl_once():
                 is_dupe, matched, dist = check_duplicate(phash, phash_cache, PHASH_THRESHOLD)
                 if is_dupe:
                     total_dupes += 1
+                    log_duplicate(video_id, item["title"], phash, matched, dist)
                     print(f"DUPLICATE | new_video_id={video_id} | existing_phash={matched} | hamming={dist} | threshold={PHASH_THRESHOLD} | skipped=yes")
                     continue
 
