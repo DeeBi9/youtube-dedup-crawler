@@ -236,8 +236,6 @@ def on_startup():
         phash_cache.add(phash, video_id, title, url)
     print(f"STARTUP | phash_cache_loaded | count={len(phash_cache)} | threshold={PHASH_THRESHOLD}")
 
-    _scheduled_crawl()
-
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         _scheduled_crawl,
@@ -248,8 +246,14 @@ def on_startup():
         max_instances=1,
         coalesce=True,
     )
+    scheduler.add_job(
+        _scheduled_crawl,
+        trigger="date",
+        id="initial_crawl",
+        replace_existing=True,
+    )
     scheduler.start()
-    print(f"SCHEDULER | started | interval={INTERVAL_MIN}min | job_id=crawl_once | max_instances=1 | coalesce=True")
+    print(f"SCHEDULER | started | interval={INTERVAL_MIN}min | job_id=crawl_once | max_instances=1 | coalesce=True | initial_crawl=scheduled")
 
 
 @app.on_event("shutdown")
