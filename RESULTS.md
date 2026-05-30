@@ -10,7 +10,7 @@ But two endpoints are clear : `1./health `
 
 ## Setup
 - Keyword crawled: dheera dheera song
-- Interval: 60 minutes (5 minutes during testing, increased to 60 minutes after validation to reduce YouTube API quota usage)
+- Interval: 15 minutes (5 minutes during testing, increased to 15 minutes after validation to reduce YouTube API quota usage)
 - Queue store (Redis / in-memory): In-memory queue
 - Persistence (DB used): SQLite (crawler.db)
 
