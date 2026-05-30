@@ -16,30 +16,31 @@ def hamming_distance(hash_a, hash_b):
 
 
 class PhashCache:
-    """In-memory store of previously seen perceptual hashes."""
+    """In-memory store of previously seen perceptual hashes with video metadata."""
 
     def __init__(self):
-        self._hashes = []
+        self._entries = []
 
-    def add(self, phash):
-        self._hashes.append(phash)
+    def add(self, phash, video_id, title, url):
+        self._entries.append((phash, video_id, title, url))
 
     def __iter__(self):
-        return iter(self._hashes)
+        return iter(self._entries)
 
     def __len__(self):
-        return len(self._hashes)
+        return len(self._entries)
 
 
 def check_duplicate(new_hash, cache, threshold):
-    """Compare new_hash against every hash in cache.
+    """Compare new_hash against every entry in cache.
 
-    Returns (is_duplicate, matched_hash, hamming_distance).
-    matched_hash and distance are None when is_duplicate is False.
-    On a match, only the first hash within threshold is returned.
+    Returns (is_duplicate, matched_phash, hamming_distance,
+             matched_video_id, matched_title, matched_url).
+    All matched fields are None when is_duplicate is False.
+    On a match, only the first entry within threshold is returned.
     """
-    for stored_hash in cache:
-        dist = hamming_distance(new_hash, stored_hash)
+    for phash, video_id, title, url in cache:
+        dist = hamming_distance(new_hash, phash)
         if dist <= threshold:
-            return True, stored_hash, dist
-    return False, None, None
+            return True, phash, dist, video_id, title, url
+    return False, None, None, None, None, None

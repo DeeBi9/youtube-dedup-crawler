@@ -41,10 +41,15 @@ def init_db():
 
 
 def load_all_phashes():
-    """Return list of ImageHash objects loaded from scan_queue."""
+    """Return list of (ImageHash, video_id, title, url) tuples from scan_queue."""
     import imagehash
 
     eng = get_engine()
     with Session(eng) as session:
-        rows = session.execute(text("SELECT phash FROM scan_queue")).fetchall()
-    return [imagehash.hex_to_hash(row[0]) for row in rows]
+        rows = session.execute(
+            text("SELECT phash, video_id, title, url FROM scan_queue")
+        ).fetchall()
+    return [
+        (imagehash.hex_to_hash(row[0]), row[1], row[2], row[3])
+        for row in rows
+    ]
