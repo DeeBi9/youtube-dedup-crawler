@@ -19,7 +19,7 @@ class ScanQueue(Base):
     url = Column(Text, nullable=False)
     thumbnail = Column(Text, nullable=True)
     phash = Column(String, nullable=False)
-    created_at = Column(String, nullable=False, default="datetime('now')")
+    created_at = Column(String, nullable=False, server_default=text("(datetime('now'))"))
 
 
 def get_engine():
@@ -38,3 +38,13 @@ def get_engine():
 def init_db():
     eng = get_engine()
     Base.metadata.create_all(eng)
+
+
+def load_all_phashes():
+    """Return list of ImageHash objects loaded from scan_queue."""
+    import imagehash
+
+    eng = get_engine()
+    with Session(eng) as session:
+        rows = session.execute(text("SELECT phash FROM scan_queue")).fetchall()
+    return [imagehash.hex_to_hash(row[0]) for row in rows]
